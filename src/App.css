@@ -844,12 +844,15 @@ tbody tr:last-child td {
     font-size: 9px;
     gap: 5px;
   }
+ }
 
-.customers-page {
+/* ===== Management Pages ===== */
+
+.management-page {
   width: 100%;
 }
 
-.customers-heading {
+.management-page .customers-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -857,26 +860,84 @@ tbody tr:last-child td {
   margin-bottom: 25px;
 }
 
-.customers-heading h1 {
+.management-page .customers-heading h1 {
+  margin: 0 0 8px;
   font-size: 25px;
-  margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 
-.customers-heading p {
+.management-page .customers-heading p {
+  margin: 0;
   color: #9298a8;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .customers-total {
   padding: 10px 16px;
+  border: 1px solid #303a52;
   border-radius: 10px;
   background: #20283a;
   color: #8daeff;
+  font-size: 12px;
   font-weight: 600;
+}
+
+.management-page .transactions-card {
+  overflow: hidden;
+}
+
+.management-page .table-wrapper {
+  margin-top: 10px;
+}
+
+.management-page table {
+  min-width: 650px;
+}
+
+.management-page th {
+  padding: 15px 12px;
+  background: #171c29;
+  color: #929bb0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.management-page td {
+  padding: 16px 12px;
+  font-size: 12px;
+}
+
+.management-page tbody tr {
+  transition: background 0.2s;
+}
+
+.management-page tbody tr:hover {
+  background: #1b2231;
+}
+
+.account-status {
+  display: inline-block;
+  min-width: 75px;
+  padding: 6px 11px;
+  border-radius: 20px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.account-status.active {
+  color: #5dd5a8;
+  background: #1d3a32;
+}
+
+.account-status.blocked {
+  color: #ff8585;
+  background: #40252b;
 }
 
 .customers-message {
   padding: 30px;
+  border: 1px solid #252a38;
   border-radius: 12px;
   background: #171f30;
   color: #c4cada;
@@ -888,10 +949,10 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 600px) {
-  .customers-heading {
+  .management-page .customers-heading {
     align-items: flex-start;
     flex-direction: column;
   }
 }
 
-}
+

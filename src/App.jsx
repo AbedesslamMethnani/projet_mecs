@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react'
 import { getCustomers } from './services/customerService'
+import { getAccounts } from './services/accountService'
 import {
   LayoutDashboard,
   Users,
@@ -510,7 +511,7 @@ function CustomersPage() {
   }
 
   return (
-    <div className="customers-page">
+    <div className="management-page customers-page">
       <div className="customers-heading">
         <div>
           <h1>Customers Management</h1>
@@ -559,6 +560,88 @@ function CustomersPage() {
   )
 }
 
+function AccountsPage() {
+  const [accounts, setAccounts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        const data = await getAccounts()
+        setAccounts(data)
+      } catch (err) {
+        console.error('Error fetching accounts:', err)
+        setError('Unable to load accounts. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAccounts()
+  }, [])
+
+  if (loading) {
+    return <div className="customers-message">Loading accounts...</div>
+  }
+
+  if (error) {
+    return <div className="customers-message error-message">{error}</div>
+  }
+
+  return (
+    <div className="management-page accounts-page">
+      <div className="customers-heading">
+        <div>
+          <h1>Accounts Management</h1>
+          <p>Manage all bank accounts in your system.</p>
+        </div>
+        <span className="customers-total">
+          Total: {accounts.length}
+        </span>
+      </div>
+
+      {accounts.length === 0 ? (
+        <div className="customers-message">No accounts found.</div>
+      ) : (
+        <div className="transactions-card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Account Number</th>
+                  <th>Customer ID</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map((account) => (
+                  <tr key={account.id}>
+                    <td>#{account.id}</td>
+                    <td>{account.accountNumber}</td>
+                    <td>#{account.customerId}</td>
+                    <td>{Number(account.balance).toFixed(2)} DT</td>
+                    <td>
+  <span className={`account-status ${account.status.toLowerCase()}`}>
+    {account.status}
+  </span>
+</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 
 function App() {
   const [activePage, setActivePage] = useState('Dashboard')
@@ -580,10 +663,13 @@ function App() {
         />
 
         <div className="page-content">
-          {activePage === 'Dashboard' ? (
+         
+{activePage === 'Dashboard' ? (
   <Dashboard />
 ) : activePage === 'Customers' ? (
   <CustomersPage />
+) : activePage === 'Accounts' ? (
+  <AccountsPage />
 ) : (
   <div className="placeholder-page">
     <h1>{activePage}</h1>
@@ -593,6 +679,7 @@ function App() {
     </p>
   </div>
 )}
+
         </div>
       </main>
     </div>
