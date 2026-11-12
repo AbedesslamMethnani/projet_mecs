@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { getCustomers } from './services/customerService'
 import { getAccounts } from './services/accountService'
 import { getTransactions } from './services/transactionService'
+import { getNotifications } from './services/notificationService'
 import {
   LayoutDashboard,
   Users,
@@ -733,6 +734,96 @@ function TransactionsPage() {
 }
 
 
+function NotificationsPage() {
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        const data = await getNotifications()
+        setNotifications(data)
+      } catch (err) {
+        console.error('Error fetching notifications:', err)
+        setError('Unable to load notifications. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchNotifications()
+  }, [])
+
+  if (loading) {
+    return <div className="customers-message">Loading notifications...</div>
+  }
+
+  if (error) {
+    return <div className="customers-message error-message">{error}</div>
+  }
+
+  return (
+    <div className="management-page notifications-page">
+      <div className="customers-heading">
+        <div>
+          <h1>Notifications Management</h1>
+          <p>Monitor all system notifications.</p>
+        </div>
+
+        <span className="customers-total">
+          Total: {notifications.length}
+        </span>
+      </div>
+
+      {notifications.length === 0 ? (
+        <div className="customers-message">No notifications found.</div>
+      ) : (
+        <div className="transactions-card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Message</th>
+                  <th>Recipient</th>
+                  <th>Transaction ID</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {notifications.map((notification) => (
+                  <tr key={notification.id}>
+                    <td>#{notification.id}</td>
+                    <td>{notification.message}</td>
+                    <td>{notification.recipient}</td>
+                    <td>#{notification.transactionId}</td>
+                    <td>
+                      <span
+                        className={`account-status ${notification.status.toLowerCase()}`}
+                      >
+                        {notification.status}
+                      </span>
+                    </td>
+                    <td>
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 
 function App() {
   const [activePage, setActivePage] = useState('Dashboard')
@@ -763,6 +854,8 @@ function App() {
   <AccountsPage />
 ) : activePage === 'Transactions' ? (
   <TransactionsPage />
+) : activePage === 'Notifications' ? (
+  <NotificationsPage />
 ) : (
   <div className="placeholder-page">
     <h1>{activePage}</h1>
