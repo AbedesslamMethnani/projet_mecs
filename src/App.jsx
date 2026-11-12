@@ -1,5 +1,6 @@
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getCustomers } from './services/customerService'
 import {
   LayoutDashboard,
   Users,
@@ -476,6 +477,89 @@ function Dashboard() {
   )
 }
 
+function CustomersPage() {
+  const [customers, setCustomers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        const data = await getCustomers()
+        setCustomers(data)
+      } catch (err) {
+        console.error('Error fetching customers:', err)
+        setError('Unable to load customers. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCustomers()
+  }, [])
+
+  if (loading) {
+    return <div className="customers-message">Loading customers...</div>
+  }
+
+  if (error) {
+    return <div className="customers-message error-message">{error}</div>
+  }
+
+  return (
+    <div className="customers-page">
+      <div className="customers-heading">
+        <div>
+          <h1>Customers Management</h1>
+          <p>Manage all registered customers in your system.</p>
+        </div>
+
+        <span className="customers-total">
+          Total: {customers.length}
+        </span>
+      </div>
+
+      {customers.length === 0 ? (
+        <div className="customers-message">
+          No customers found.
+        </div>
+      ) : (
+        <div className="transactions-card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {customers.map((customer) => (
+                  <tr key={customer.id}>
+                    <td>#{customer.id}</td>
+                    <td>{customer.firstName}</td>
+                    <td>{customer.lastName}</td>
+                    <td>{customer.email}</td>
+                    <td>{customer.phone}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 function App() {
   const [activePage, setActivePage] = useState('Dashboard')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -497,16 +581,18 @@ function App() {
 
         <div className="page-content">
           {activePage === 'Dashboard' ? (
-            <Dashboard />
-          ) : (
-            <div className="placeholder-page">
-              <h1>{activePage}</h1>
-              <p>
-                The {activePage.toLowerCase()} page will be developed in the
-                next steps.
-              </p>
-            </div>
-          )}
+  <Dashboard />
+) : activePage === 'Customers' ? (
+  <CustomersPage />
+) : (
+  <div className="placeholder-page">
+    <h1>{activePage}</h1>
+    <p>
+      The {activePage.toLowerCase()} page will be developed in the
+      next steps.
+    </p>
+  </div>
+)}
         </div>
       </main>
     </div>

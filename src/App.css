@@ -844,4 +844,54 @@ tbody tr:last-child td {
     font-size: 9px;
     gap: 5px;
   }
+
+.customers-page {
+  width: 100%;
+}
+
+.customers-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.customers-heading h1 {
+  font-size: 25px;
+  margin-bottom: 8px;
+}
+
+.customers-heading p {
+  color: #9298a8;
+  font-size: 14px;
+}
+
+.customers-total {
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #20283a;
+  color: #8daeff;
+  font-weight: 600;
+}
+
+.customers-message {
+  padding: 30px;
+  border-radius: 12px;
+  background: #171f30;
+  color: #c4cada;
+  text-align: center;
+}
+
+.error-message {
+  color: #ff8585;
+}
+
+@media (max-width: 600px) {
+  .customers-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 }
