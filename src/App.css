@@ -934,6 +934,10 @@ tbody tr:last-child td {
   color: #ff8585;
   background: #40252b;
 }
+.account-status.pending {
+  color: #f5c76b;
+  background: #40351f;
+}
 
 .customers-message {
   padding: 30px;

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { getCustomers } from './services/customerService'
 import { getAccounts } from './services/accountService'
+import { getTransactions } from './services/transactionService'
 import {
   LayoutDashboard,
   Users,
@@ -641,6 +642,96 @@ function AccountsPage() {
   )
 }
 
+function TransactionsPage() {
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        const data = await getTransactions()
+        setTransactions(data)
+      } catch (err) {
+        console.error('Error fetching transactions:', err)
+        setError('Unable to load transactions. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTransactions()
+  }, [])
+
+  if (loading) {
+    return <div className="customers-message">Loading transactions...</div>
+  }
+
+  if (error) {
+    return <div className="customers-message error-message">{error}</div>
+  }
+
+  return (
+    <div className="management-page transactions-page">
+      <div className="customers-heading">
+        <div>
+          <h1>Transactions Management</h1>
+          <p>Monitor all financial transactions in your system.</p>
+        </div>
+
+        <span className="customers-total">
+          Total: {transactions.length}
+        </span>
+      </div>
+
+      {transactions.length === 0 ? (
+        <div className="customers-message">No transactions found.</div>
+      ) : (
+        <div className="transactions-card">
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Source Account</th>
+                  <th>Destination Account</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {transactions.map((transaction) => (
+                  <tr key={transaction.id}>
+                    <td>#{transaction.id}</td>
+                    <td>#{transaction.sourceAccountId}</td>
+                    <td>#{transaction.destinationAccountId}</td>
+                    <td>{Number(transaction.amount).toFixed(2)} DT</td>
+                    <td>
+                      <span
+                        className={`account-status ${transaction.status.toLowerCase()}`}
+                      >
+                        {transaction.status}
+                      </span>
+                    </td>
+                    <td>
+                      {new Date(transaction.createdAt).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 
 
 function App() {
@@ -670,6 +761,8 @@ function App() {
   <CustomersPage />
 ) : activePage === 'Accounts' ? (
   <AccountsPage />
+) : activePage === 'Transactions' ? (
+  <TransactionsPage />
 ) : (
   <div className="placeholder-page">
     <h1>{activePage}</h1>
