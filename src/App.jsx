@@ -11,7 +11,11 @@ import {
   createAccount,
   updateAccountStatus,
 } from './services/accountService'
-import { getTransactions } from './services/transactionService'
+import {
+  getTransactions,
+  createTransaction,
+  deleteTransaction,
+} from './services/transactionService'
 import { getNotifications } from './services/notificationService'
 import {
   LayoutDashboard,
@@ -1239,6 +1243,15 @@ function TransactionsPage() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+const [saving, setSaving] = useState(false)
+const [success, setSuccess] = useState('')
+
+const [formData, setFormData] = useState({
+  sourceAccountId: '',
+  destinationAccountId: '',
+  amount: '',
+})
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -1258,27 +1271,185 @@ function TransactionsPage() {
 
     fetchTransactions()
   }, [])
+  const handleInputChange = (e) => {
+  const { name, value } = e.target
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+  }))
+}
+
+const handleCreateTransaction = async (e) => {
+  e.preventDefault()
+
+  try {
+    setSaving(true)
+    setError('')
+    setSuccess('')
+
+    const newTransaction = {
+      sourceAccountId: Number(formData.sourceAccountId),
+      destinationAccountId: Number(formData.destinationAccountId),
+      amount: Number(formData.amount),
+    }
+
+    await createTransaction(newTransaction)
+
+    const updatedTransactions = await getTransactions()
+    setTransactions(updatedTransactions)
+
+    setFormData({
+      sourceAccountId: '',
+      destinationAccountId: '',
+      amount: '',
+    })
+
+    setShowForm(false)
+    setSuccess('Transaction created successfully!')
+  } catch (err) {
+    console.error('Error creating transaction:', err)
+    setError('Unable to create transaction. Please check the information.')
+  } finally {
+    setSaving(false)
+  }
+}
+const handleDeleteTransaction = async (id) => {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete transaction #${id}?`
+  )
+
+  if (!confirmed) return
+
+  try {
+    setError('')
+    setSuccess('')
+
+    await deleteTransaction(id)
+
+    const updatedTransactions = await getTransactions()
+    setTransactions(updatedTransactions)
+
+    setSuccess(`Transaction #${id} deleted successfully!`)
+  } catch (err) {
+    console.error('Error deleting transaction:', err)
+    setError('Unable to delete transaction. Please try again.')
+  }
+}
 
   if (loading) {
     return <div className="customers-message">Loading transactions...</div>
   }
 
-  if (error) {
-    return <div className="customers-message error-message">{error}</div>
-  }
+  
 
   return (
     <div className="management-page transactions-page">
-      <div className="customers-heading">
-        <div>
-          <h1>Transactions Management</h1>
-          <p>Monitor all financial transactions in your system.</p>
+      
+<div className="customers-heading">
+  <div>
+    <h1>Transactions Management</h1>
+    <p>Monitor all financial transactions in your system.</p>
+  </div>
+
+  <div className="customers-heading-actions">
+    <span className="customers-total">
+      Total: {transactions.length}
+    </span>
+
+    <button
+      className="add-customer-button"
+      onClick={() => {
+        setShowForm(!showForm)
+        setError('')
+        setSuccess('')
+      }}
+    >
+      + Add Transaction
+    </button>
+  </div>
+</div>
+
+{success && (
+  <div className="customers-message success-message">
+    {success}
+  </div>
+)}
+
+{error && (
+  <div className="customers-message error-message">
+    {error}
+  </div>
+)}
+
+{showForm && (
+  <div className="customer-form-card">
+    <h3>Create New Transaction</h3>
+
+    <form onSubmit={handleCreateTransaction}>
+      <div className="customer-form-grid">
+        <div className="form-group">
+          <label>Source Account ID</label>
+          <input
+            type="number"
+            name="sourceAccountId"
+            value={formData.sourceAccountId}
+            onChange={handleInputChange}
+            placeholder="Enter source account ID"
+            min="1"
+            required
+          />
         </div>
 
-        <span className="customers-total">
-          Total: {transactions.length}
-        </span>
+        <div className="form-group">
+          <label>Destination Account ID</label>
+          <input
+            type="number"
+            name="destinationAccountId"
+            value={formData.destinationAccountId}
+            onChange={handleInputChange}
+            placeholder="Enter destination account ID"
+            min="1"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Amount (DT)</label>
+          <input
+            type="number"
+            name="amount"
+            value={formData.amount}
+            onChange={handleInputChange}
+            placeholder="Enter amount"
+            min="0.001"
+            step="0.001"
+            required
+          />
+        </div>
       </div>
+
+      <div className="customer-form-actions">
+        <button
+          type="submit"
+          className="save-customer-button"
+          disabled={saving}
+        >
+          {saving ? 'Creating...' : 'Create Transaction'}
+        </button>
+
+        <button
+          type="button"
+          className="cancel-button"
+          onClick={() => setShowForm(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+)}
+
 
       {transactions.length === 0 ? (
         <div className="customers-message">No transactions found.</div>
@@ -1294,6 +1465,7 @@ function TransactionsPage() {
                   <th>Amount</th>
                   <th>Status</th>
                   <th>Created At</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
@@ -1314,6 +1486,14 @@ function TransactionsPage() {
                     <td>
                       {new Date(transaction.createdAt).toLocaleString()}
                     </td>
+                    <td>
+  <button
+    className="delete-transaction-button"
+    onClick={() => handleDeleteTransaction(transaction.id)}
+  >
+    Delete
+  </button>
+</td>
                   </tr>
                 ))}
               </tbody>

@@ -938,6 +938,15 @@ tbody tr:last-child td {
   color: #f5c76b;
   background: #40351f;
 }
+.account-status.completed {
+  color: #5dd5a8;
+  background: #1d3a32;
+}
+
+.account-status.failed {
+  color: #ff8585;
+  background: #40252b;
+}
 
 .customers-message {
   padding: 30px;
@@ -1267,6 +1276,22 @@ tbody tr:last-child td {
   background: #252a38;
   color: #e8eaf0;
   border: 1px solid #3a4050;
+}
+.delete-transaction-button {
+  background: #40252b;
+  color: #ff8585;
+  border: 1px solid #6a343d;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.delete-transaction-button:hover {
+  background: #5a2c35;
+  border-color: #ff8585;
 }
 
 
