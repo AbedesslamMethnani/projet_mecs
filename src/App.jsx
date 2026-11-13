@@ -6,7 +6,11 @@ import {
   updateCustomer,
   deleteCustomer,
 } from './services/customerService'
-import { getAccounts } from './services/accountService'
+import {
+  getAccounts,
+  createAccount,
+  updateAccountStatus,
+} from './services/accountService'
 import { getTransactions } from './services/transactionService'
 import { getNotifications } from './services/notificationService'
 import {
@@ -962,6 +966,15 @@ function AccountsPage() {
   const [accounts, setAccounts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+const [saving, setSaving] = useState(false)
+const [success, setSuccess] = useState('')
+const [formData, setFormData] = useState({
+  accountNumber: '',
+  customerId: '',
+  balance: '',
+  status: 'ACTIVE',
+})
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -980,26 +993,196 @@ function AccountsPage() {
 
     fetchAccounts()
   }, [])
+  const handleInputChange = (e) => {
+  const { name, value } = e.target
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+  }))
+}
+
+const handleCreateAccount = async (e) => {
+  e.preventDefault()
+
+  try {
+    setSaving(true)
+    setError('')
+    setSuccess('')
+
+    const newAccount = {
+      accountNumber: formData.accountNumber.trim(),
+      customerId: Number(formData.customerId),
+      balance: Number(formData.balance),
+      status: formData.status,
+    }
+
+    await createAccount(newAccount)
+
+    const updatedAccounts = await getAccounts()
+    setAccounts(updatedAccounts)
+
+    setFormData({
+      accountNumber: '',
+      customerId: '',
+      balance: '',
+      status: 'ACTIVE',
+    })
+
+    setShowForm(false)
+    setSuccess('Account created successfully!')
+  } catch (err) {
+    console.error('Error creating account:', err)
+    setError('Unable to create account. Please check the information.')
+  } finally {
+    setSaving(false)
+  }
+}
+
+const handleStatusChange = async (account) => {
+  const newStatus = account.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'
+
+  try {
+    setError('')
+    setSuccess('')
+
+    const updatedAccount = await updateAccountStatus(account.id, newStatus)
+
+    setAccounts((prev) =>
+      prev.map((item) =>
+        item.id === account.id ? updatedAccount : item
+      )
+    )
+
+    setSuccess(`Account ${newStatus.toLowerCase()} successfully!`)
+  } catch (err) {
+    console.error('Error updating account status:', err)
+    setError('Unable to update account status.')
+  }
+}
 
   if (loading) {
     return <div className="customers-message">Loading accounts...</div>
   }
 
-  if (error) {
-    return <div className="customers-message error-message">{error}</div>
-  }
+  
 
   return (
     <div className="management-page accounts-page">
       <div className="customers-heading">
-        <div>
-          <h1>Accounts Management</h1>
-          <p>Manage all bank accounts in your system.</p>
+  <div>
+    <h1>Accounts Management</h1>
+    <p>Manage all bank accounts in your system.</p>
+  </div>
+
+  <div className="customers-heading-actions">
+    <span className="customers-total">
+      Total: {accounts.length}
+    </span>
+
+    <button
+      className="add-customer-button"
+      onClick={() => {
+        setShowForm(!showForm)
+        setError('')
+        setSuccess('')
+      }}
+    >
+      + Add Account
+    </button>
+  </div>
+</div>
+
+{success && (
+  <div className="customers-message success-message">
+    {success}
+  </div>
+)}
+
+{error && (
+  <div className="customers-message error-message">
+    {error}
+  </div>
+)}
+
+{showForm && (
+  <div className="customer-form-card">
+    <h3>Add New Account</h3>
+
+    <form onSubmit={handleCreateAccount}>
+      <div className="customer-form-grid">
+        <div className="form-group">
+          <label>Account Number</label>
+          <input
+            type="text"
+            name="accountNumber"
+            value={formData.accountNumber}
+            onChange={handleInputChange}
+            placeholder="Example: TN00100004"
+            required
+          />
         </div>
-        <span className="customers-total">
-          Total: {accounts.length}
-        </span>
+
+        <div className="form-group">
+          <label>Customer ID</label>
+          <input
+            type="number"
+            name="customerId"
+            value={formData.customerId}
+            onChange={handleInputChange}
+            placeholder="Enter customer ID"
+            min="1"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Initial Balance (DT)</label>
+          <input
+            type="number"
+            name="balance"
+            value={formData.balance}
+            onChange={handleInputChange}
+            placeholder="0.000"
+            min="0"
+            step="0.001"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Status</label>
+          <select
+            name="status"
+            value={formData.status}
+            onChange={handleInputChange}
+          >
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="BLOCKED">BLOCKED</option>
+          </select>
+        </div>
       </div>
+
+      <div className="customer-form-actions">
+        <button
+          type="submit"
+          className="save-customer-button"
+          disabled={saving}
+        >
+          {saving ? 'Creating...' : 'Create Account'}
+        </button>
+
+        <button
+          type="button"
+          className="cancel-button"
+          onClick={() => setShowForm(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+)}
 
       {accounts.length === 0 ? (
         <div className="customers-message">No accounts found.</div>
@@ -1014,6 +1197,7 @@ function AccountsPage() {
                   <th>Customer ID</th>
                   <th>Balance</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1027,6 +1211,18 @@ function AccountsPage() {
   <span className={`account-status ${account.status.toLowerCase()}`}>
     {account.status}
   </span>
+</td>
+<td>
+  <button
+    className={
+      account.status === 'ACTIVE'
+        ? 'delete-customer-button'
+        : 'edit-customer-button'
+    }
+    onClick={() => handleStatusChange(account)}
+  >
+    {account.status === 'ACTIVE' ? 'Block' : 'Activate'}
+  </button>
 </td>
                   </tr>
                 ))}

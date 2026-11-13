@@ -8,3 +8,18 @@ export const getAccounts = async () => {
   return response.data;
 };
 
+export const createAccount = async (accountData) => {
+  const response = await axios.post(API_URL, accountData);
+  return response.data;
+};
+
+export const updateAccountStatus = async (id, status) => {
+  const response = await axios.patch(
+    `${API_URL}/${id}/status`,
+    null,
+    {
+      params: { status },
+    }
+  );
+  return response.data;
+};
