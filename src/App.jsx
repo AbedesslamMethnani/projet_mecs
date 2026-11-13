@@ -1,6 +1,11 @@
 
 import { useState, useEffect } from 'react'
-import { getCustomers } from './services/customerService'
+import {
+  createCustomer,
+  getCustomers,
+  updateCustomer,
+  deleteCustomer,
+} from './services/customerService'
 import { getAccounts } from './services/accountService'
 import { getTransactions } from './services/transactionService'
 import { getNotifications } from './services/notificationService'
@@ -246,16 +251,46 @@ function StatCard({ stat }) {
   )
 }
 
-function OverviewChart() {
-  const bars = [
-    { month: 'May', height: 45 },
-    { month: 'Jun', height: 65 },
-    { month: 'Jul', height: 52 },
-    { month: 'Aug', height: 80 },
-    { month: 'Sep', height: 60 },
-    { month: 'Oct', height: 92 },
-    { month: 'Nov', height: 75 },
-  ]
+
+function OverviewChart({ transactions = [] }) {
+  const months = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov']
+
+  const bars = months.map((month, index) => {
+    const now = new Date()
+    const targetMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - (6 - index),
+      1
+    )
+
+    const total = transactions
+      .filter((transaction) => {
+        if (!transaction.createdAt) return false
+
+        const date = new Date(transaction.createdAt)
+
+        return (
+          date.getMonth() === targetMonth.getMonth() &&
+          date.getFullYear() === targetMonth.getFullYear()
+        )
+      })
+      .reduce(
+        (sum, transaction) => sum + Number(transaction.amount || 0),
+        0
+      )
+
+    return {
+      month,
+      total,
+    }
+  })
+
+  const maxTotal = Math.max(...bars.map((bar) => bar.total), 1)
+
+  const totalAmount = transactions.reduce(
+    (sum, transaction) => sum + Number(transaction.amount || 0),
+    0
+  )
 
   return (
     <div className="chart-card">
@@ -273,17 +308,22 @@ function OverviewChart() {
       </div>
 
       <div className="chart-summary">
-        <h2>245,850 DT</h2>
+        <h2>
+          {totalAmount.toLocaleString('fr-TN', {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3,
+          })} DT
+        </h2>
         <span className="stat-change">
-          <TrendingUp size={14} /> +14.8%
+          {transactions.length} transactions
         </span>
       </div>
 
       <div className="chart">
         <div className="chart-grid">
-          <span>300K</span>
-          <span>200K</span>
-          <span>100K</span>
+          <span>{maxTotal.toFixed(0)}</span>
+          <span>{(maxTotal * 0.66).toFixed(0)}</span>
+          <span>{(maxTotal * 0.33).toFixed(0)}</span>
           <span>0</span>
         </div>
 
@@ -292,10 +332,10 @@ function OverviewChart() {
             <div className="chart-column" key={bar.month}>
               <div className="bar-track">
                 <div
-                  className={`bar ${
-                    bar.month === 'Oct' ? 'highlight-bar' : ''
-                  }`}
-                  style={{ height: `${bar.height}%` }}
+                  className="bar"
+                  style={{
+                    height: `${(bar.total / maxTotal) * 100}%`,
+                  }}
                 />
               </div>
               <span>{bar.month}</span>
@@ -306,13 +346,35 @@ function OverviewChart() {
 
       <div className="chart-legend">
         <span className="legend-dot" />
-        Transaction volume
+        Transaction volume (DT)
       </div>
     </div>
   )
 }
 
-function RecentTransactions() {
+
+
+function RecentTransactions({
+  transactions = [],
+  accounts = [],
+  customers = [],
+}) {
+  const recentTransactions = [...transactions]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5)
+
+  const getCustomer = (accountId) => {
+    const account = accounts.find(
+      (item) => Number(item.id) === Number(accountId)
+    )
+
+    if (!account) return null
+
+    return customers.find(
+      (customer) => Number(customer.id) === Number(account.customerId)
+    )
+  }
+
   return (
     <div className="transactions-card">
       <div className="card-heading">
@@ -339,50 +401,69 @@ function RecentTransactions() {
           </thead>
 
           <tbody>
-            {transactions.map((transaction, index) => (
-              <tr key={index}>
-                <td>
-                  <div className="customer-cell">
-                    <div className={`transaction-avatar avatar-${index}`}>
-                      {transaction.direction === 'in' ? (
-                        <ArrowDownLeft size={17} />
-                      ) : (
-                        <ArrowUpRight size={17} />
-                      )}
-                    </div>
-                    <div>
-                      <strong>{transaction.name}</strong>
-                      <span>{transaction.email}</span>
-                    </div>
-                  </div>
-                </td>
-
-                <td>{transaction.type}</td>
-                <td>{transaction.date}</td>
-
-                <td
-                  className={
-                    transaction.direction === 'in'
-                      ? 'amount-positive'
-                      : 'amount-negative'
-                  }
-                >
-                  {transaction.amount}
-                </td>
-
-                <td>
-                  <span
-                    className={`status ${
-                      transaction.status === 'Completed'
-                        ? 'completed'
-                        : 'pending'
-                    }`}
-                  >
-                    {transaction.status}
-                  </span>
-                </td>
+            {recentTransactions.length === 0 ? (
+              <tr>
+                <td colSpan="5">No transactions found.</td>
               </tr>
-            ))}
+            ) : (
+              recentTransactions.map((transaction, index) => {
+                const customer = getCustomer(transaction.sourceAccountId)
+                const direction =
+                  transaction.sourceAccountId != null ? 'out' : 'in'
+
+                const status =
+                  transaction.status?.toUpperCase() || 'PENDING'
+
+                return (
+                  <tr key={transaction.id}>
+                    <td>
+                      <div className="customer-cell">
+                        <div className={`transaction-avatar avatar-${index}`}>
+                          {direction === 'in' ? (
+                            <ArrowDownLeft size={17} />
+                          ) : (
+                            <ArrowUpRight size={17} />
+                          )}
+                        </div>
+
+                        <div>
+                          <strong>
+                            {customer
+                              ? `${customer.firstName} ${customer.lastName}`
+                              : `Transaction #${transaction.id}`}
+                          </strong>
+                          <span>
+                            {customer?.email || `Account #${transaction.sourceAccountId}`}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>Transfer</td>
+
+                    <td>
+                      {transaction.createdAt
+                        ? new Date(transaction.createdAt).toLocaleString('fr-TN')
+                        : '—'}
+                    </td>
+
+                    <td className="amount-negative">
+                      -{Number(transaction.amount || 0).toFixed(3)} DT
+                    </td>
+
+                    <td>
+                      <span
+                        className={`status ${
+                          status === 'COMPLETED' ? 'completed' : 'pending'
+                        }`}
+                      >
+                        {status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -390,126 +471,342 @@ function RecentTransactions() {
   )
 }
 
+
+
 function Dashboard() {
+  const [dashboardData, setDashboardData] = useState({
+    customers: [],
+    accounts: [],
+    transactions: [],
+    notifications: [],
+  })
+
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+    const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const [customers, accounts, transactions, notifications] =
+        await Promise.all([
+          getCustomers(),
+          getAccounts(),
+          getTransactions(),
+          getNotifications(),
+        ])
+
+      setDashboardData({
+        customers,
+        accounts,
+        transactions,
+        notifications,
+      })
+    } catch (err) {
+      console.error('Dashboard error:', err)
+      setError('Unable to load dashboard data.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const totalBalance = dashboardData.accounts.reduce(
+    (total, account) => total + Number(account.balance || 0),
+    0
+  )
+
+  const activeAccounts = dashboardData.accounts.filter(
+    (account) => account.status?.toUpperCase() === 'ACTIVE'
+  ).length
+
+  const stats = [
+    {
+      title: 'Total Customers',
+      value: dashboardData.customers.length.toLocaleString(),
+      change: 'Live',
+      description: 'Real backend data',
+      icon: Users,
+      color: 'blue',
+    },
+    {
+      title: 'Total Balance',
+      value: `${totalBalance.toLocaleString('fr-TN', {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      })} DT`,
+      change: 'Live',
+      description: 'All account balances',
+      icon: Wallet,
+      color: 'purple',
+    },
+    {
+      title: 'Transactions',
+      value: dashboardData.transactions.length.toLocaleString(),
+      change: 'Live',
+      description: 'Total operations',
+      icon: ArrowLeftRight,
+      color: 'green',
+    },
+    {
+      title: 'Active Accounts',
+      value: activeAccounts.toLocaleString(),
+      change: 'Live',
+      description: 'Active bank accounts',
+      icon: CreditCard,
+      color: 'orange',
+    },
+  ]
+
   return (
     <>
       <section className="welcome-section">
-        <div>
-          <h1>Welcome back, Admin 👋</h1>
-          <p>Here is what's happening with your financial system today.</p>
-        </div>
+  <div>
+    <h1>Welcome back, Admin</h1>
+    <p>Here is what's happening with your financial system today.</p>
+  </div>
 
-        <button className="date-filter">
-          <CalendarDays size={17} />
-          November 2026
-          <ChevronDown size={16} />
-        </button>
-      </section>
+  <div className="welcome-actions">
+    <button
+      className="date-filter"
+      onClick={fetchDashboardData}
+      disabled={loading}
+    >
+      <span>{loading ? 'Refreshing...' : 'Refresh Dashboard'}</span>
+    </button>
+  </div>
+</section>
 
-      <section className="stats-grid">
-        {stats.map((stat) => (
-          <StatCard key={stat.title} stat={stat} />
-        ))}
-      </section>
+      {loading ? (
+        <p className="customers-message">Loading dashboard data...</p>
+      ) : error ? (
+        <p className="error-message">{error}</p>
+      ) : (
+        <>
+          <section className="stats-grid">
+            {stats.map((stat) => (
+              <StatCard key={stat.title} stat={stat} />
+            ))}
+          </section>
 
-      <section className="dashboard-grid">
-        <OverviewChart />
+          <section className="dashboard-grid">
+            <OverviewChart transactions={dashboardData.transactions} />
 
-        <div className="quick-card">
-          <div className="card-heading">
-            <div>
-              <h3>Quick Overview</h3>
-              <p>System summary</p>
+            <div className="quick-card">
+              <div className="card-heading">
+                <div>
+                  <h3>Quick Overview</h3>
+                  <p>System summary</p>
+                </div>
+                <MoreHorizontal size={20} />
+              </div>
+
+              <div className="quick-item">
+                <div className="quick-icon blue">
+                  <Users size={19} />
+                </div>
+                <div>
+                  <strong>Customers</strong>
+                  <span>Registered users</span>
+                </div>
+                <b>{dashboardData.customers.length}</b>
+              </div>
+
+              <div className="quick-item">
+                <div className="quick-icon purple">
+                  <Wallet size={19} />
+                </div>
+                <div>
+                  <strong>Accounts</strong>
+                  <span>All bank accounts</span>
+                </div>
+                <b>{dashboardData.accounts.length}</b>
+              </div>
+
+              <div className="quick-item">
+                <div className="quick-icon green">
+                  <ArrowLeftRight size={19} />
+                </div>
+                <div>
+                  <strong>Transactions</strong>
+                  <span>Total operations</span>
+                </div>
+                <b>{dashboardData.transactions.length}</b>
+              </div>
+
+              <div className="quick-item">
+                <div className="quick-icon orange">
+                  <Bell size={19} />
+                </div>
+                <div>
+                  <strong>Notifications</strong>
+                  <span>System messages</span>
+                </div>
+                <b>{dashboardData.notifications.length}</b>
+              </div>
             </div>
-            <MoreHorizontal size={20} />
-          </div>
+          </section>
 
-          <div className="quick-item">
-            <div className="quick-icon blue">
-              <Users size={19} />
-            </div>
-            <div>
-              <strong>Customers</strong>
-              <span>Registered users</span>
-            </div>
-            <b>2,450</b>
-          </div>
-
-          <div className="quick-item">
-            <div className="quick-icon purple">
-              <Wallet size={19} />
-            </div>
-            <div>
-              <strong>Accounts</strong>
-              <span>All bank accounts</span>
-            </div>
-            <b>1,820</b>
-          </div>
-
-          <div className="quick-item">
-            <div className="quick-icon green">
-              <ArrowLeftRight size={19} />
-            </div>
-            <div>
-              <strong>Transactions</strong>
-              <span>Total operations</span>
-            </div>
-            <b>12,840</b>
-          </div>
-
-          <div className="quick-item">
-            <div className="quick-icon orange">
-              <Bell size={19} />
-            </div>
-            <div>
-              <strong>Notifications</strong>
-              <span>System messages</span>
-            </div>
-            <b>24</b>
-          </div>
-        </div>
-      </section>
-
-      <RecentTransactions />
-
-      <p className="demo-notice">
-        Demo interface — displayed figures are temporary and not connected to
-        the backend yet.
-      </p>
+          <RecentTransactions
+  transactions={dashboardData.transactions}
+  accounts={dashboardData.accounts}
+  customers={dashboardData.customers}
+/>
+        </>
+      )}
     </>
   )
 }
+
+
 
 function CustomersPage() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [editingCustomer, setEditingCustomer] = useState(null)
+
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+  })
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const data = await getCustomers()
+      setCustomers(data)
+    } catch (err) {
+      console.error('Error fetching customers:', err)
+      setError('Unable to load customers. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        setLoading(true)
-        setError('')
-
-        const data = await getCustomers()
-        setCustomers(data)
-      } catch (err) {
-        console.error('Error fetching customers:', err)
-        setError('Unable to load customers. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchCustomers()
   }, [])
 
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    })
+  }
+  const handleEditCustomer = (customer) => {
+  setEditingCustomer(customer)
+
+  setFormData({
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    email: customer.email,
+    phone: customer.phone,
+  })
+
+  setShowForm(true)
+  setError('')
+  setSuccess('')
+}
+
+  const handleAddCustomer = async (e) => {
+    e.preventDefault()
+
+    try {
+      setSaving(true)
+      setError('')
+      setSuccess('')
+
+      await createCustomer(formData)
+
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+      })
+
+      setShowForm(false)
+      setSuccess('Customer added successfully!')
+
+      await fetchCustomers()
+    } catch (err) {
+      console.error('Error adding customer:', err)
+      setError(
+        err.response?.data?.message || 'Unable to add customer.'
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+  const handleUpdateCustomer = async (e) => {
+  e.preventDefault()
+
+  try {
+    setSaving(true)
+    setError('')
+    setSuccess('')
+
+    await updateCustomer(editingCustomer.id, formData)
+
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+    })
+
+    setEditingCustomer(null)
+    setShowForm(false)
+    setSuccess('Customer updated successfully!')
+
+    await fetchCustomers()
+  } catch (err) {
+    console.error('Error updating customer:', err)
+    setError(
+      err.response?.data?.message || 'Unable to update customer.'
+    )
+  } finally {
+    setSaving(false)
+  }
+}
+const handleDeleteCustomer = async (customer) => {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete ${customer.firstName} ${customer.lastName}?`
+  )
+
+  if (!confirmed) return
+
+  try {
+    setError('')
+    setSuccess('')
+
+    await deleteCustomer(customer.id)
+
+    setSuccess('Customer deleted successfully!')
+
+    await fetchCustomers()
+  } catch (err) {
+    console.error('Error deleting customer:', err)
+    setError(
+      err.response?.data?.message || 'Unable to delete customer.'
+    )
+  }
+}
+
   if (loading) {
     return <div className="customers-message">Loading customers...</div>
-  }
-
-  if (error) {
-    return <div className="customers-message error-message">{error}</div>
   }
 
   return (
@@ -520,10 +817,90 @@ function CustomersPage() {
           <p>Manage all registered customers in your system.</p>
         </div>
 
-        <span className="customers-total">
-          Total: {customers.length}
-        </span>
+        <div>
+          <span className="customers-total">
+            Total: {customers.length}
+          </span>
+
+          <button
+            className="add-customer-button"
+            onClick={() => {
+              setError('')
+              setSuccess('')
+              setShowForm(!showForm)
+            }}
+          >
+            + Add Customer
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="error-message">{error}</div>
+      )}
+
+      {success && (
+        <div className="success-message">{success}</div>
+      )}
+
+      {showForm && (
+        <div className="transactions-card customer-form-card">
+          <h3>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</h3>
+
+          <form onSubmit={editingCustomer ? handleUpdateCustomer : handleAddCustomer}>
+            <input
+              type="text"
+              name="firstName"
+              placeholder="First Name"
+              value={formData.firstName}
+              onChange={handleInputChange}
+              required
+            />
+
+            <input
+              type="text"
+              name="lastName"
+              placeholder="Last Name"
+              value={formData.lastName}
+              onChange={handleInputChange}
+              required
+            />
+
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+            />
+
+            <input
+              type="tel"
+              name="phone"
+              placeholder="Phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              required
+            />
+
+            <button type="submit" disabled={saving}>
+              {saving
+  ? 'Saving...'
+  : editingCustomer
+    ? 'Update Customer'
+    : 'Save Customer'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+            >
+              Cancel
+            </button>
+          </form>
+        </div>
+      )}
 
       {customers.length === 0 ? (
         <div className="customers-message">
@@ -540,6 +917,7 @@ function CustomersPage() {
                   <th>Last Name</th>
                   <th>Email</th>
                   <th>Phone</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
@@ -551,6 +929,23 @@ function CustomersPage() {
                     <td>{customer.lastName}</td>
                     <td>{customer.email}</td>
                     <td>{customer.phone}</td>
+                    <td>
+  <div className="customer-actions">
+    <button
+      className="edit-customer-button"
+      onClick={() => handleEditCustomer(customer)}
+    >
+      Edit
+    </button>
+
+    <button
+      className="delete-customer-button"
+      onClick={() => handleDeleteCustomer(customer)}
+    >
+      Delete
+    </button>
+  </div>
+</td>
                   </tr>
                 ))}
               </tbody>
@@ -561,6 +956,7 @@ function CustomersPage() {
     </div>
   )
 }
+
 
 function AccountsPage() {
   const [accounts, setAccounts] = useState([])
